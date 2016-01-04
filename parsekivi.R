@@ -9,7 +9,7 @@ library(igraph)
 # Analyzing networks of characters in 'Love Actually' by David Robinson
 # http://varianceexplained.org/r/love-actually-network/
 
-# Text copied from Project Gutenberg
+# Seven Brothers text copied from Project Gutenberg
 # http://www.gutenberg.org/ebooks/11940.txt.utf-8
 raw <- readLines("kivi.txt", skipNul = T)
 
@@ -24,7 +24,7 @@ names <- data_frame(raw = raw) %>%
 # names <- names[!names$name %in% c("MUUT", "VELJEKSET", "DAMAGE"),]
 # write.csv(names, "names.csv", row.names = F)
 #
-# Added descriptions manually, and imported again
+# Edited descriptions manually, and imported again
 names.df <- read.csv("names.csv", stringsAsFactors = F)
 
 lines <- data_frame(raw = raw) %>%
@@ -49,9 +49,8 @@ by_name_chap <- lines %>%
 
 by_name_chap
 
-
 # Barchart of how much characters speak across chapters
-png("br7.png", width=1280,height=800)
+png("br7bar.png", width=1280,height=800)
 
 ggplot(by_name_chap, aes(x=factor(character), y=n, fill=character))+
   geom_bar(stat = "identity") +
@@ -73,6 +72,7 @@ png("b7dendr.png", width=1280,height=800)
 plot(h)
 dev.off()
 
+
 # Timeline
 ordering <- h$labels[h$order]
 ordering
@@ -90,12 +90,14 @@ ggplot(chaps, aes(chapter, character)) +
   geom_path(aes(group = chapter)) 
 dev.off()
 
+
 # Heatmap
 cooccur <- name_chap_matrix %*% t(name_chap_matrix)
 
 png("b7heat.png", width=1280,height=800)
 heatmap(cooccur, margins = c(20,15))
 dev.off()
+
 
 # Network
 g <- graph.adjacency(cooccur, weighted = TRUE, mode = "undirected", diag = FALSE)
