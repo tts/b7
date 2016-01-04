@@ -32,7 +32,7 @@ lines <- data_frame(raw = raw) %>%
   mutate(is_chap = str_detect(raw, " LUKU"),
          chapter = cumsum(is_chap)) %>%
   filter(!is_chap) %>%
-  mutate(raw_speaker = gsub("^([A-Z??-]+)(\\.)(.*)", "\\1%\\3", raw, perl=TRUE)) %>%  
+  mutate(raw_speaker = gsub("^([A-ZÄÖ-]+)(\\.)(.*)", "\\1%\\3", raw, perl=TRUE)) %>%  
   separate(raw_speaker, c("speaker", "dialogue"), sep = "%", extra = "drop", fill = "left") %>%
   group_by(chapter, line = cumsum(!is.na(speaker))) %>%
   summarize(name = speaker[1], dialogue = str_c(dialogue, collapse = " "))
