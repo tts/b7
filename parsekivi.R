@@ -5,6 +5,12 @@ library(reshape2)
 library(ggplot2)
 library(igraph)
 
+# Script modified from 
+# Analyzing networks of characters in 'Love Actually' by David Robinson
+# http://varianceexplained.org/r/love-actually-network/
+
+# Text copied from Project Gutenberg
+# http://www.gutenberg.org/ebooks/11940.txt.utf-8
 raw <- readLines("kivi.txt", skipNul = T)
 
 names <- data_frame(raw = raw) %>%
@@ -14,9 +20,10 @@ names <- data_frame(raw = raw) %>%
   summarize(name = speaker[1]) %>%
   select(name)
 
-# Excluding names which refer to a group of people or something non-person
-#names <- names[!names$name %in% c("MUUT", "VELJEKSET", "DAMAGE"),]
-#write.csv(names, "names.csv", row.names = F)
+# Excluding names which refer to a group of people or a non-person
+# names <- names[!names$name %in% c("MUUT", "VELJEKSET", "DAMAGE"),]
+# write.csv(names, "names.csv", row.names = F)
+#
 # Added descriptions manually, and imported again
 names.df <- read.csv("names.csv", stringsAsFactors = F)
 
