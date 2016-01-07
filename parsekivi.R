@@ -47,16 +47,16 @@ lines <- lines %>%
 by_name_chap <- lines %>%
   count(chapter, character)
 
-by_name_chap
+names(by_name_chap) <- c("chapter", "character", "dialogs")
 
 # Barchart of how much characters speak across chapters
 png("br7bar.png", width=1280,height=800)
 
-ggplot(by_name_chap, aes(x=factor(character), y=n, fill=character))+
+p <- ggplot(by_name_chap, aes(x=character, y=dialogs, fill=character)) +
   geom_bar(stat = "identity") +
-  facet_grid(. ~ chapter) +
-  coord_flip() +
-  theme(legend.position="none")
+  facet_grid(. ~ chapter) 
+
+p + coord_flip() + theme(legend.position="none")
 
 dev.off()
 
@@ -68,7 +68,7 @@ name_chap_matrix <- by_name_chap %>%
 dim(name_chap_matrix)
 norm <- name_chap_matrix / rowSums(name_chap_matrix)
 h <- hclust(dist(norm, method = "manhattan"))
-png("b7dendr.png", width=1280,height=800)
+png("b7clusterdendr.png", width=1280,height=800)
 plot(h)
 dev.off()
 
@@ -78,7 +78,6 @@ ordering <- h$labels[h$order]
 ordering
 
 chaps <- by_name_chap %>%
-  filter(n() > 1) %>%    # scenes with > 1 characters
   ungroup() %>%
   mutate(chapter = as.numeric(factor(chapter)),
          character = factor(character, levels = ordering))
@@ -95,18 +94,15 @@ dev.off()
 cooccur <- name_chap_matrix %*% t(name_chap_matrix)
 
 png("b7heat.png", width=1280,height=800)
-heatmap(cooccur, margins = c(20,15))
+heatmap(cooccur, margins = c(5,5))
 dev.off()
-
 
 # Network
 g <- graph.adjacency(cooccur, weighted = TRUE, mode = "undirected", diag = FALSE)
 V(g)$lec_community <- as.character(leading.eigenvector.community(g)$membership)
-V(g)$vbetweenness <- igraph::betweenness(g, directed = F)
-E(g)$ebetweenness <- edge.betweenness(g, directed = F)
-V(g)$centrality <- igraph::evcent(g, weights = V(g)$weight)$vector
+V(g)$centrality <- igraph::betweenness(g, directed = F)
+E(g)$weight <- runif(ecount(g))
 V(g)$Label <- V(g)$name
-write.graph(g, 'b7.graphml', format = "graphml")
 
 # Plotting network with  geomnet
 library(geomnet)
@@ -119,30 +115,41 @@ gnet <- merge(
   by.x = "from", by.y = "Label", all = TRUE
 )
 
-gnet$shortname <- sapply(gnet$name, function(x) strsplit(x, " \\(")[[1]][1])
+
+gnet$shortname <- sapply(gnet$name, function(x) {
+  n <- strsplit(x, " \\(")[[1]][1]
+  nwords <- strsplit(n, "\\-")[[1]]
+  paste0(substring(nwords, 1, 1),
+         tolower(substring(nwords, 2)),
+         collapse = "-")
+})
+
+# https://github.com/karthik/wesanderson/blob/master/R/colors.R
+wesanderson.cavalcanti <- c("#D8B70A", "#02401B", "#A2A475", "#81A88D", "#972D15")
 
 png("b7network.png", width=1280,height=800)
-ggplot(data = gnet,
-       aes(from_id = from, to_id = to)) +
+
+p <- ggplot(data = gnet,
+            aes(from_id = from, to_id = to)) +
   geom_net(
     ecolour = "lightyellow",
     aes(
       colour = lec_community, 
       group = lec_community,
-      linetype = lec_community,
       fontsize = 6,
-      linewidth = vbetweenness / 10 + 0.2,
+      linewidth = weight * 10 / 5 + 0.2,
       size = centrality,
       label = shortname
     ),
-    vjust = -0.75, alpha = 0.2,
+    show.legend = F,
+    vjust = -0.75, alpha = 0.4,
     layout = 'fruchtermanreingold'
-  ) +
-  theme_net() +
-  theme(legend.position = "bottom",
-        panel.background = element_rect(fill = "black")) +
-  scale_colour_brewer("community", palette = "Set1") +
+  )
+
+p + theme_net() +
+  theme(panel.background = element_rect(fill = "gray90"),
+        plot.margin = unit(c(1, 1, 1, 1), "lines")) +
+  scale_color_manual(values = wesanderson.cavalcanti[1:length(unique(gnet$lec_community))]) +
   guides(linetype = FALSE)
 
-
-
+dev.off()
