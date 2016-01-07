@@ -20,11 +20,11 @@ names <- data_frame(raw = raw) %>%
   summarize(name = speaker[1]) %>%
   select(name)
 
-# Excluding names which refer to a group of people or a non-person
+# Exclude names which refer to a group of people or a non-person,
+# write to file, edit descriptions manually, and read in again
+#
 # names <- names[!names$name %in% c("MUUT", "VELJEKSET", "DAMAGE"),]
 # write.csv(names, "names.csv", row.names = F)
-#
-# Edited descriptions manually, and imported again
 names.df <- read.csv("names.csv", stringsAsFactors = F)
 
 lines <- data_frame(raw = raw) %>%
@@ -40,40 +40,53 @@ lines <- data_frame(raw = raw) %>%
 # KERO is typo, should be EERO
 lines$name[lines$name == 'KERO'] <- "EERO"
 
+# Join with names
 lines <- lines %>%
   inner_join(names.df) %>%
   mutate(character = paste0(name, " (", type, ")"))
 
+# Preparing data for bar chart
 by_name_chap <- lines %>%
   count(chapter, character)
 
 names(by_name_chap) <- c("chapter", "character", "dialogs")
 
-# Barchart of how much characters speak across chapters
-png("br7bar.png", width=1280,height=800)
 
+#################################################################
+#
+# Facetted barchart of how much characters speak across chapters
+#
+#################################################################
+png("br7bar.png", width=1280,height=800)
 p <- ggplot(by_name_chap, aes(x=character, y=dialogs, fill=character)) +
   geom_bar(stat = "identity") +
   facet_grid(. ~ chapter) 
-
 p + coord_flip() + theme(legend.position="none")
-
 dev.off()
 
 
+#######################
+#
 # Cluster dendrogram
+#
+#######################
 name_chap_matrix <- by_name_chap %>%
   acast(character ~ chapter, fun.aggregate = length)
 
 dim(name_chap_matrix)
 norm <- name_chap_matrix / rowSums(name_chap_matrix)
 h <- hclust(dist(norm, method = "manhattan"))
+
 png("b7clusterdendr.png", width=1280,height=800)
 plot(h)
 dev.off()
 
 
-# Timeline
+##########################
+#
+# Scatterplot as timeline
+# 
+##########################
 ordering <- h$labels[h$order]
 ordering
 
@@ -90,21 +103,29 @@ ggplot(chaps, aes(chapter, character)) +
 dev.off()
 
 
+###############
+#
 # Heatmap
+#
+###############
 cooccur <- name_chap_matrix %*% t(name_chap_matrix)
 
 png("b7heat.png", width=1280,height=800)
 heatmap(cooccur, margins = c(5,5))
 dev.off()
 
+
+############
+#
 # Network
+#
+############
 g <- graph.adjacency(cooccur, weighted = TRUE, mode = "undirected", diag = FALSE)
 V(g)$lec_community <- as.character(leading.eigenvector.community(g)$membership)
 V(g)$centrality <- igraph::betweenness(g, directed = F)
 E(g)$weight <- runif(ecount(g))
 V(g)$Label <- V(g)$name
 
-# Plotting network with  geomnet
 library(geomnet)
 gV <- get.data.frame(g, what=c("vertices"))
 gE <- get.data.frame(g, what=c("edges"))
@@ -114,7 +135,6 @@ gnet <- merge(
   gE, gV,
   by.x = "from", by.y = "Label", all = TRUE
 )
-
 
 gnet$shortname <- sapply(gnet$name, function(x) {
   n <- strsplit(x, " \\(")[[1]][1]
